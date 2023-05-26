@@ -6,6 +6,8 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sysinfo.h"
+//#include "kalloc.c"
 
 uint64
 sys_exit(void)
@@ -94,4 +96,31 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+// trace the masked system call
+uint64
+sys_trace(void)
+{
+  int trace_mask;
+  if(argint(0, &trace_mask) < 0)
+    return -1;
+  myproc()->trace_mask = trace_mask;
+  return 0;
+}
+
+// collect the info about the running system.
+uint64
+sys_sysinfo(void)
+{
+  uint64 addr;
+  if(argaddr(0, &addr) < 0) return -1;
+  
+  struct proc *p = myproc();
+  struct sysinfo info;
+  info.freemem = freebytes();
+  info.nproc = proccount();
+  
+  if(copyout(p->pagetable, addr, (char *)&info, sizeof(info)) < 0) return -1;
+  return 0;
 }

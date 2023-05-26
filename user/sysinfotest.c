@@ -18,7 +18,7 @@ sinfo(struct sysinfo *info) {
 int
 countfree()
 {
-  uint64 sz0 = (uint64)sbrk(0);
+  uint64 sz0 = (uint64)sbrk(0); // get the current proc boundary(size).
   struct sysinfo info;
   int n = 0;
 
@@ -34,7 +34,7 @@ countfree()
       info.freemem);
     exit(1);
   }
-  sbrk(-((uint64)sbrk(0) - sz0));
+  sbrk(-((uint64)sbrk(0) - sz0)); // set boundary back.
   return n;
 }
 

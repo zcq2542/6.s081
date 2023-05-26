@@ -292,6 +292,9 @@ fork(void)
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
+  // copy trace_mask.
+  np->trace_mask = p->trace_mask;
+
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
@@ -604,7 +607,7 @@ either_copyout(int user_dst, uint64 dst, void *src, uint64 len)
 {
   struct proc *p = myproc();
   if(user_dst){
-    return copyout(p->pagetable, dst, src, len);
+    return copyout(p->pagetable, dst, src, len); // from kernel to user space.
   } else {
     memmove((char *)dst, src, len);
     return 0;
@@ -654,3 +657,16 @@ procdump(void)
     printf("\n");
   }
 }
+
+// Count all proc which is not UNUSED
+uint64
+proccount(void)
+{
+  struct proc *p;
+  uint64 count = 0;
+  for(p = proc; p < &proc[NPROC]; ++p){
+    if(p->state != UNUSED) ++count;
+  }
+  return count;
+}
+
