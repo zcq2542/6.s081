@@ -15,6 +15,8 @@ struct proc *initproc;
 int nextpid = 1;
 struct spinlock pid_lock;
 
+struct usyscall * pidpointer; // keep the pid.
+
 extern void forkret(void);
 static void freeproc(struct proc *p);
 
@@ -127,6 +129,15 @@ found:
     return 0;
   }
 
+  // Allocate a USYSCALL page.
+  if((p->usyscall = (struct usyscall *)kalloc()) == 0){ // allocate physical address
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+  // memset(pidpointer, 0, sizeof(int));
+  p->usyscall->pid = p->pid;
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -153,6 +164,9 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+  if(p->usyscall) // free a usyscall structure.
+    kfree((void*)p->usyscall);
+  p->usyscall = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
@@ -191,7 +205,15 @@ proc_pagetable(struct proc *p)
   // map the trapframe just below TRAMPOLINE, for trampoline.S.
   if(mappages(pagetable, TRAPFRAME, PGSIZE,
               (uint64)(p->trapframe), PTE_R | PTE_W) < 0){
-    uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+    uvmunmap(pagetable, TRAMPOLINE, 1, 0); // unmap the TRAMPOLINE.
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+
+  // map the USYSCALL read-only page just below TRAPFRAME.
+  if(mappages(pagetable, USYSCALL, PGSIZE,
+              (uint64)(p->usyscall), PTE_R | PTE_U) < 0){ // PTE_U allow user mode to read.
+    uvmunmap(pagetable, TRAMPOLINE, 2, 0); // unmap TRAMPOLINE and TRAPFRAME.
     uvmfree(pagetable, 0);
     return 0;
   }
@@ -206,6 +228,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  uvmunmap(pagetable, USYSCALL, 1, 0);
   uvmfree(pagetable, sz);
 }
 
