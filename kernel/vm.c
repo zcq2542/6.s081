@@ -443,7 +443,7 @@ recursiveprint(pagetable_t pagetable, int level) {
       for (int j = 0; j < level; ++j){
         printf(".. ");
       }
-      printf("..%d: pte %p pa %p\n", i, pte, pagetable+PGSIZE*i);
+      printf("..%d: pte %p pa %p\n", i, pte, PTE2PA(pte)); // print where pte point to.
       if((pte & (PTE_R|PTE_W|PTE_X)) == 0){
       // this PTE points to a lower-level page table.
         uint64 child = PTE2PA(pte);
